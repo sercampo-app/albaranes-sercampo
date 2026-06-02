@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(bytes).toString('base64')
     const mimeType = file.type as 'image/jpeg' | 'image/png' | 'image/webp'
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
 
     const contextExtra = conductoresInfo
       ? `\nContexto adicional sobre estilos de letra de conductores:\n${conductoresInfo}`
