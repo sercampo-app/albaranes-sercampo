@@ -126,7 +126,7 @@ export default function AlbaranCard({ index, data: initial, confidence, imageUrl
             <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Productos entregados</p>
             <div className="grid grid-cols-4 gap-2">
               {PRODUCT_FIELDS.map(({ key, label }) => (
-                <FieldInput key={key} label={label} fieldKey={key} value={(data as Record<string, string>)[key] ?? ''} state={getState(key)} onChange={handleChange} onConfirm={handleConfirm} compact />
+                <FieldInput key={key} label={label} fieldKey={key} value={String(data[key as keyof AlbaranData] ?? '')} state={getState(key)} onChange={handleChange} onConfirm={handleConfirm} compact />
               ))}
             </div>
           </div>
@@ -136,7 +136,7 @@ export default function AlbaranCard({ index, data: initial, confidence, imageUrl
             <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Otros</p>
             <div className="grid grid-cols-4 gap-2">
               {OTROS_FIELDS.map(({ key, label }) => (
-                <FieldInput key={key} label={label} fieldKey={key} value={(data as Record<string, string>)[key] ?? ''} state={getState(key)} onChange={handleChange} onConfirm={handleConfirm} compact />
+                <FieldInput key={key} label={label} fieldKey={key} value={String(data[key as keyof AlbaranData] ?? '')} state={getState(key)} onChange={handleChange} onConfirm={handleConfirm} compact />
               ))}
             </div>
           </div>
