@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lector de Albaranes · Sercampo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f4f0; --surface: #fff; --surface2: #f0efe9;
+      --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+      --text: #1a1a18; --text2: #6b6b67; --text3: #9b9b96;
+      --amber-bg: #FAEEDA; --amber-border: #FAC775; --amber-text: #633806;
+      --blue-bg: #E6F1FB; --blue-border: #B5D4F4; --blue-text: #0C447C;
+      --green-bg: #EAF3DE; --green-border: #C0DD97; --green-text: #27500A;
+      --red: #A32D2D; --radius: 10px; --radius-sm: 6px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 54px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    .topbar-logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+    .topbar-logo svg { width: 28px; height: 28px; }
+    .main { max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; }
+    .notice { background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--blue-text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .upload-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+    .upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-sm); padding: 26px 20px; text-align: center; cursor: pointer; position: relative; transition: background 0.15s; }
+    .upload-zone:hover { background: var(--surface2); }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-zone .ico { font-size: 30px; display: block; margin-bottom: 7px; }
+    .upload-zone p { font-size: 14px; color: var(--text2); }
+    .upload-zone .hint { font-size: 12px; color: var(--text3); margin-top: 3px; }
+    .previews { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .preview-item { position: relative; width: 74px; height: 74px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-item .pnum { position: absolute; bottom: 3px; left: 3px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 4px; }
+    .preview-item .prm { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.6); border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; color: white; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 18px; }
+    .btn { padding: 10px 18px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 7px; border: none; font-family: inherit; transition: opacity 0.15s; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-primary { flex: 1; background: #1a1a18; color: #fff; justify-content: center; font-size: 15px; padding: 12px; }
+    .btn-export { background: var(--surface); color: var(--text); border: 1px solid var(--border2); }
+    .legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text2); margin-bottom: 18px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .ldot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .ldot-n { background: var(--surface2); border: 1px solid var(--border2); }
+    .ldot-w { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+    .ldot-c { background: var(--blue-bg); border: 1px solid var(--blue-border); }
+    .ldot-ok { background: var(--green-bg); border: 1px solid var(--green-border); }
+    .albaran-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+    .card-header { padding: 11px 15px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .card-header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .card-num { font-size: 11px; font-weight: 600; color: var(--text3); background: var(--surface); border: 1px solid var(--border2); border-radius: 99px; padding: 1px 8px; flex-shrink: 0; }
+    .card-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .badge { font-size: 11px; padding: 3px 10px; border-radius: 99px; display: flex; align-items: center; gap: 4px; border: 1px solid transparent; white-space: nowrap; font-weight: 500; }
+    .badge-zone { background: var(--surface2); color: var(--text2); border-color: var(--border2); font-size: 10px; }
+    .badge-driver { background: var(--blue-bg); color: var(--blue-text); border-color: var(--blue-border); cursor: pointer; }
+    .badge-driver.confirmed { background: var(--green-bg); color: var(--green-text); border-color: var(--green-border); }
+    .card-body { padding: 15px; }
+    .sec-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 7px; margin-top: 13px; }
+    .sec-lbl:first-child { margin-top: 0; }
+    .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .field { border-radius: var(--radius-sm); padding: 8px 11px; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); transition: border-color 0.1s; }
+    .field:hover { border-color: var(--border2); }
+    .field.warn { background: var(--amber-bg); border-color: var(--amber-border); }
+    .field.cif  { background: var(--blue-bg);  border-color: var(--blue-border); }
+    .field.ok   { background: var(--green-bg); border-color: var(--green-border); }
+    .field-lbl { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+    .field.warn .field-lbl { color: #854F0B; }
+    .field.cif  .field-lbl { color: #185FA5; }
+    .field.ok   .field-lbl { color: #3B6D11; }
+    .field-val { font-size: 13px; font-weight: 500; color: var(--text); }
+    .field.warn .field-val { color: var(--amber-text); }
+    .field.cif  .field-val { color: var(--blue-text); }
+    .field.ok   .field-val { color: var(--green-text); }
+    .ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ptable th { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+    .ptable td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text); cursor: pointer; }
+    .ptable tr:last-child td { border-bottom: none; }
+    .ptable tr:hover td { background: var(--surface2); }
+    .td-w  { background: var(--amber-bg) !important; color: var(--amber-text) !important; }
+    .td-ok { background: var(--green-bg) !important; color: var(--green-text) !important; }
+    .card-footer { padding: 8px 15px; border-top: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text3); }
+    .fw { color: #BA7517; } .fok { color: #3B6D11; }
+    .loading-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; margin-bottom: 14px; }
+    .spinner { width: 22px; height: 22px; border: 2px solid var(--border2); border-top-color: var(--text); border-radius: 50%; animation: spin 0.75s linear infinite; margin: 0 auto 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-card p { font-size: 13px; color: var(--text2); }
+    .loading-step { font-size: 11px; color: var(--text3); margin-top: 4px; }
+    .error-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 14px; }
+    .error-msg { font-size: 13px; color: var(--red); }
+    .error-detail { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: monospace; word-break: break-all; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 340px; border: 1px solid var(--border); }
+    .modal h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .modal-note { font-size: 12px; color: var(--text3); margin-bottom: 13px; line-height: 1.5; }
+    .modal label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
+    .modal input, .modal select { width: 100%; padding: 8px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-size: 13px; margin-bottom: 13px; font-family: inherit; }
+    .modal-btns { display: flex; gap: 8px; }
+    .modal-btns button { flex: 1; padding: 9px; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; font-weight: 500; }
+    .btn-save { background: #1a1a18; color: #fff; border: none; }
+    .btn-cancel { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#1a1a18"/><path d="M7 9h14M7 14h10M7 19h7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    Albaranes Sercampo
+  </div>
+  <button class="btn btn-export" id="btnExport" disabled>⬇ Exportar CSV</button>
+</div>
+
+<div class="main">
+  <div class="notice">
+    ℹ️ Necesitas tener <strong>claude.ai abierto en otra pestaña</strong> del mismo navegador para que funcione la IA.
+  </div>
+
+  <div class="upload-card">
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" multiple />
+      <span class="ico">📂</span>
+      <p>Arrastra las fotos aquí o haz clic para seleccionar</p>
+      <p class="hint">JPG, PNG · varios albaranes a la vez</p>
+    </div>
+    <div class="previews" id="previews"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btnAnalyze" disabled>🤖 Analizar con IA</button>
+  </div>
+
+  <div class="legend" id="legend" style="display:none">
+    <div class="legend-item"><div class="ldot ldot-n"></div> Dato seguro</div>
+    <div class="legend-item"><div class="ldot ldot-w"></div> Verificar — clic para editar</div>
+    <div class="legend-item"><div class="ldot ldot-c"></div> Verificado por CIF</div>
+    <div class="legend-item"><div class="ldot ldot-ok"></div> Confirmado manualmente</div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h4 id="modalTitle">Editar campo</h4>
+    <p class="modal-note" id="modalNote"></p>
+    <label id="modalLabel">Valor</label>
+    <input id="modalInput" type="text" autocomplete="off" />
+    <div id="modalDriverRow" style="display:none">
+      <label>Conductor</label>
+      <select id="modalDriver">
+        <option value="">— Desconocido —</option>
+        <option>Julián</option><option>Rafa</option><option>Antonio</option><option>Jorge</option>
+        <option>David</option><option>Toni</option><option>Ángel</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btnCancel">Cancelar</button>
+      <button class="btn-save" id="btnSave">Guardar ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONDUCTORES = ['Julián','Rafa','Antonio','Jorge','David','Toni','Ángel'];
+const ZONA_CUENCA = ['Julián','Rafa','Antonio','Jorge'];
+const ZONA_CR_TO  = ['David','Toni','Ángel'];
+
+const SYSTEM_PROMPT = `Eres un experto en lectura de albaranes de recogida de aceites vegetales usados de Sercampo.
+
+ZONAS: Cuenca → Julián, Rafa, Antonio, Jorge. Ciudad Real y Toledo → David, Toni, Ángel.
+ESTABLECIMIENTOS: siempre bares o restaurantes. Si tienes dudas con el nombre, pon confident:false.
+PRODUCTOS izquierda (Sercampo entrega): DESENGRASANTES, FREGASUELOS, LAVAVAJILLAS, JABÓN DE MANOS, HIGIENIZANTES, WC BAÑOS.
+Derecha: L. CRISTALES, LEJÍAS, y filas OTROS donde suelen poner Filtros, Bayetas o Dinero.
+Número + C/P/Paq/Caj = cajas (1C = 1 caja). Número solo = unidades. Vacío = "—".
+CONDUCTORES: Julián, Rafa, Antonio, Jorge, David, Toni, Ángel.
+
+Devuelve SOLO JSON sin markdown:
+{"establecimiento":{"value":"","confident":true},"localidad":{"value":"","confident":true},"cif":{"value":"","confident":true},"fecha":{"value":"","confident":true},"bidones_recogidos":{"value":"","confident":true},"bidones_entregados":{"value":"","confident":true},"conductor":{"value":"","confident":true},"nota_conductor":"","productos":[{"nombre":"DESENGRASANTES","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"FREGASUELOS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"LAVAVAJILLAS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"JABÓN DE MANOS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"HIGIENIZANTES","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"WC BAÑOS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"L. CRISTALES","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"LEJÍAS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"FILTROS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"BAYETAS","cantidad":"—","tipo":"unidades","confident":true},{"nombre":"DINERO","cantidad":"—","tipo":"importe","confident":true},{"nombre":"OTROS","cantidad":"—","tipo":"unidades","confident":true}]}`;
+
+const files = [];
+const allData = [];
+let editTarget = null;
+
+const fileInput  = document.getElementById('fileInput');
+const previews   = document.getElementById('previews');
+const btnAnalyze = document.getElementById('btnAnalyze');
+const btnExport  = document.getElementById('btnExport');
+const resultsEl  = document.getElementById('results');
+const legendEl   = document.getElementById('legend');
+const overlayEl  = document.getElementById('overlay');
+
+fileInput.addEventListener('change', e => [...e.target.files].forEach(addFile));
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background = 'var(--surface2)'; });
+dz.addEventListener('dragleave', () => dz.style.background = '');
+dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background = ''; [...e.dataTransfer.files].forEach(addFile); });
+
+function addFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  const idx = files.length;
+  files.push(file);
+  const item = document.createElement('div');
+  item.className = 'preview-item';
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  const num = document.createElement('span');
+  num.className = 'pnum'; num.textContent = idx + 1;
+  const rm = document.createElement('button');
+  rm.className = 'prm'; rm.textContent = '×';
+  rm.onclick = () => { files.splice(idx, 1, null); item.remove(); updateBtn(); };
+  item.append(img, num, rm);
+  previews.appendChild(item);
+  updateBtn();
+}
+
+function updateBtn() {
+  const n = files.filter(Boolean).length;
+  btnAnalyze.disabled = n === 0;
+  btnAnalyze.textContent = n > 0 ? `🤖 Analizar ${n} albarán${n > 1 ? 'es' : ''} con IA` : '🤖 Analizar con IA';
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Error leyendo archivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function callClaude(messages, useSearch) {
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    messages
+  };
+  if (!useSearch) body.system = SYSTEM_PROMPT;
+  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`API ${resp.status}: ${err.slice(0, 200)}`);
+  }
+  return resp.json();
+}
+
+async function extractAlbaran(b64, mediaType) {
+  const json = await callClaude([{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+      { type: 'text', text: 'Extrae todos los datos de este albarán. Responde SOLO con el JSON.' }
+    ]
+  }], false);
+  const text = (json.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  const s = text.indexOf('{'), e = text.lastIndexOf('}');
+  if (s === -1) throw new Error('Respuesta inesperada: ' + text.slice(0, 100));
+  return JSON.parse(text.slice(s, e + 1));
+}
+
+async function lookupCIF(cif, establecimiento, localidad) {
+  try {
+    const json = await callClaude([{
+      role: 'user',
+      content: `Busca el CIF español "${cif}". El negocio escrito a mano dice "${establecimiento}" en "${localidad}". Es un bar o restaurante. Devuelve SOLO JSON: {"nombre_oficial":"","encontrado":false,"fuente":""}`
+    }], true);
+    const text = (json.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    const s = text.indexOf('{'), e = text.lastIndexOf('}');
+    if (s === -1) return null;
+    return JSON.parse(text.slice(s, e + 1));
+  } catch { return null; }
+}
+
+btnAnalyze.addEventListener('click', async () => {
+  const toProcess = files.filter(Boolean);
+  if (!toProcess.length) return;
+  btnAnalyze.disabled = true;
+  legendEl.style.display = 'flex';
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const cardIdx = allData.length;
+    allData.push(null);
+    const loadEl = mkLoading(cardIdx + 1, toProcess.length);
+    resultsEl.appendChild(loadEl);
+
+    try {
+      const b64 = await fileToBase64(toProcess[i]);
+      const parsed = await extractAlbaran(b64, toProcess[i].type);
+
+      let cifResult = null;
+      if (parsed.establecimiento?.confident === false && parsed.cif?.value && parsed.cif.value !== '—') {
+        loadEl.querySelector('.loading-step').textContent = 'Verificando CIF en internet…';
+        cifResult = await lookupCIF(parsed.cif.value, parsed.establecimiento.value || '', parsed.localidad?.value || '');
+      }
+
+      allData[cardIdx] = { data: parsed, confirmed: {}, cifResult };
+      const card = document.createElement('div');
+      card.className = 'albaran-card';
+      card.id = 'card-' + cardIdx;
+      renderCard(card, cardIdx);
+      loadEl.replaceWith(card);
+    } catch (err) {
+      allData[cardIdx] = null;
+      const errEl = document.createElement('div');
+      errEl.className = 'error-card';
+      errEl.innerHTML = `<p class="error-msg">⚠ Error en albarán ${cardIdx + 1}</p><p class="error-detail">${err.message}</p>`;
+      loadEl.replaceWith(errEl);
+    }
+  }
+
+  btnAnalyze.disabled = false;
+  updateBtn();
+  btnExport.disabled = allData.filter(d => d?.data).length === 0;
+});
+
+function mkLoading(num, total) {
+  const d = document.createElement('div');
+  d.className = 'loading-card';
+  d.innerHTML = `<div class="spinner"></div><p>Leyendo albarán ${num} de ${total}…</p><p class="loading-step">Extrayendo datos de la imagen</p>`;
+  return d;
+}
+
+function getZone(c) {
+  if (ZONA_CUENCA.includes(c)) return 'Cuenca';
+  if (ZONA_CR_TO.includes(c)) return 'C. Real / Toledo';
+  return null;
+}
+
+function renderCard(el, idx) {
+  const { data, confirmed: c, cifResult: cr } = allData[idx];
+  const g  = k => c[k] !== undefined ? c[k] : (data[k]?.value || '—');
+  const isC = k => c[k] !== undefined;
+  const isW = k => !isC(k) && data[k]?.confident === false;
+
+  const conductor = g('conductor');
+  const zone = getZone(conductor);
+  const cifOk = !isC('establecimiento') && cr?.encontrado && cr?.nombre_oficial;
+  const estabDisplay = cifOk ? cr.nombre_oficial : g('establecimiento');
+
+  const fieldDefs = [
+    { k: 'establecimiento', lbl: 'Establecimiento', v: estabDisplay,
+      st: isC('establecimiento') ? 'ok' : cifOk ? 'cif' : isW('establecimiento') ? 'warn' : '',
+      note: cifOk ? `CIF · ${cr.fuente || ''}` : '' },
+    { k: 'localidad',          lbl: 'Localidad',          v: g('localidad'),          st: isC('localidad') ? 'ok' : isW('localidad') ? 'warn' : '' },
+    { k: 'cif',                lbl: 'CIF',                v: g('cif'),                st: isC('cif') ? 'ok' : isW('cif') ? 'warn' : '' },
+    { k: 'fecha',              lbl: 'Fecha',              v: g('fecha'),              st: isC('fecha') ? 'ok' : isW('fecha') ? 'warn' : '' },
+    { k: 'bidones_recogidos',  lbl: 'Bidones recogidos',  v: g('bidones_recogidos'),  st: isC('bidones_recogidos') ? 'ok' : isW('bidones_recogidos') ? 'warn' : '' },
+    { k: 'bidones_entregados', lbl: 'Bidones entregados', v: g('bidones_entregados'), st: isC('bidones_entregados') ? 'ok' : isW('bidones_entregados') ? 'warn' : '' },
+  ];
+
+  const productos = (data.productos || []).filter(p => {
+    const v = c['prod_' + p.nombre] !== undefined ? c['prod_' + p.nombre] : p.cantidad;
+    return v && v !== '—';
+  });
+
+  const numWarn =
+    fieldDefs.filter(f => f.st === 'warn').length +
+    (!isC('conductor') && data.conductor?.confident === false ? 1 : 0) +
+    (data.productos || []).filter(p => p.confident === false && !isC('prod_' + p.nombre)).length;
+
+  function ico(st) {
+    return st === 'warn' ? ' ⚠' : st === 'cif' ? ' 🌐' : st === 'ok' ? ' ✓' : '';
+  }
+
+  el.innerHTML = `
+    <div class="card-header">
+      <div class="card-header-left">
+        <span class="card-num">#${idx + 1}</span>
+        <span class="card-title" title="${estabDisplay}">${estabDisplay !== '—' ? estabDisplay : 'Albarán ' + (idx + 1)}</span>
+      </div>
+      <div class="badges">
+        ${zone ? `<span class="badge badge-zone">📍 ${zone}</span>` : ''}
+        <span class="badge badge-driver${isC('conductor') ? ' confirmed' : ''}"
+          onclick="openDriver(${idx})" title="${data.nota_conductor || ''}">
+          🚗 ${conductor || 'Desconocido'}${!isC('conductor') && data.conductor?.confident === false ? ' ⚠' : isC('conductor') ? ' ✓' : ''}
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="sec-lbl">Datos generales</div>
+      <div class="fields-grid">
+        ${fieldDefs.map(f => `
+          <div class="field${f.st ? ' ' + f.st : ''}" onclick="openField(${idx},'${f.k}','${f.lbl}')" title="Clic para editar">
+            <div class="field-lbl">${f.lbl}${f.note ? ` · <span style="font-size:9px">${f.note}</span>` : ''}</div>
+            <div class="field-val">${f.v}${ico(f.st)}</div>
+          </div>`).join('')}
+      </div>
+      ${productos.length ? `
+        <div class="sec-lbl" style="margin-top:13px">Productos entregados</div>
+        <table class="ptable">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Tipo</th></tr></thead>
+          <tbody>${productos.map(p => {
+            const pk = 'prod_' + p.nombre;
+            const pv = c[pk] !== undefined ? c[pk] : p.cantidad;
+            const pw = p.confident === false && !isC(pk);
+            const pc = isC(pk);
+            return `<tr onclick="openField(${idx},'${pk}','${p.nombre}')" title="Clic para editar">
+              <td class="${pw ? 'td-w' : pc ? 'td-ok' : ''}">${p.nombre}</td>
+              <td class="${pw ? 'td-w' : pc ? 'td-ok' : ''}">${pv}${pw ? ' ⚠' : pc ? ' ✓' : ''}</td>
+              <td style="color:var(--text3);font-size:11px">${p.tipo || 'unidades'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>` : ''}
+    </div>
+    <div class="card-footer">
+      <span class="${numWarn > 0 ? 'fw' : 'fok'}">
+        ${numWarn > 0 ? `⚠ ${numWarn} campo${numWarn > 1 ? 's' : ''} por verificar` : '✓ Todo verificado'}
+      </span>
+      <span>Clic en cualquier campo para editar</span>
+    </div>`;
+}
+
+function openField(idx, key, label) {
+  if (key === 'conductor') { openDriver(idx); return; }
+  editTarget = { idx, key };
+  document.getElementById('modalTitle').textContent = 'Editar: ' + label;
+  document.getElementById('modalLabel').textContent = label;
+  document.getElementById('modalDriverRow').style.display = 'none';
+
+  const { data, confirmed: c, cifResult: cr } = allData[idx];
+  let val = c[key];
+  let note = '';
+  if (val === undefined) {
+    if (key === 'establecimiento' && cr?.encontrado) { val = cr.nombre_oficial; note = `CIF encontró: "${cr.nombre_oficial}"`; }
+    else if (key.startsWith('prod_')) { const pn = key.replace('prod_', ''); val = (data.productos || []).find(p => p.nombre === pn)?.cantidad || ''; }
+    else val = data[key]?.value || '';
+  }
+  document.getElementById('modalNote').textContent = note;
+  document.getElementById('modalInput').value = val === '—' ? '' : (val || '');
+  overlayEl.classList.add('open');
+  setTimeout(() => document.getElementById('modalInput').focus(), 60);
+}
+
+function openDriver(idx) {
+  editTarget = { idx, key: 'conductor' };
+  const { data, confirmed: c } = allData[idx];
+  document.getElementById('modalTitle').textContent = 'Identificar conductor';
+  const zone = getZone(data.conductor?.value);
+  document.getElementById('modalNote').textContent =
+    (data.nota_conductor ? 'Letra: ' + data.nota_conductor + '. ' : '') + (zone ? 'Zona: ' + zone : '');
+  document.getElementById('modalLabel').textContent = 'Conductor:';
+  document.getElementById('modalInput').value = '';
+  const cur = c['conductor'] ?? data.conductor?.value ?? '';
+  document.getElementById('modalDriver').value = CONDUCTORES.includes(cur) ? cur : '';
+  document.getElementById('modalDriverRow').style.display = 'block';
+  overlayEl.classList.add('open');
+}
+
+window.openField = openField;
+window.openDriver = openDriver;
+
+document.getElementById('btnCancel').onclick = () => overlayEl.classList.remove('open');
+overlayEl.addEventListener('click', e => { if (e.target === overlayEl) overlayEl.classList.remove('open'); });
+document.getElementById('modalInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnSave').click();
+  if (e.key === 'Escape') overlayEl.classList.remove('open');
+});
+document.getElementById('btnSave').onclick = () => {
+  if (!editTarget) return;
+  const { idx, key } = editTarget;
+  const val = key === 'conductor'
+    ? (document.getElementById('modalDriver').value || document.getElementById('modalInput').value.trim())
+    : (document.getElementById('modalInput').value.trim() || '—');
+  allData[idx].confirmed[key] = val;
+  overlayEl.classList.remove('open');
+  const card = document.getElementById('card-' + idx);
+  if (card) renderCard(card, idx);
+};
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  const headers = ['Establecimiento','Localidad','CIF','Fecha','Conductor','Zona',
+    'Bidones Recogidos','Bidones Entregados',
+    'Desengrasantes','Fregasuelos','Lavavajillas','Jabón de Manos','Higienizantes','WC Baños',
+    'L.Cristales','Lejías','Filtros','Bayetas','Dinero','Otros'];
+  const rows = [headers.join(';')];
+  allData.forEach(entry => {
+    if (!entry?.data) return;
+    const { data: d, confirmed: c, cifResult: cr } = entry;
+    const g = k => { if (c[k] !== undefined) return c[k]; if (k === 'establecimiento' && cr?.encontrado) return cr.nombre_oficial; return d[k]?.value || '—'; };
+    const p = n => { const pk = 'prod_' + n; return c[pk] !== undefined ? c[pk] : ((d.productos || []).find(x => x.nombre === n)?.cantidad || '—'); };
+    const conductor = g('conductor');
+    rows.push([
+      g('establecimiento'), g('localidad'), g('cif'), g('fecha'),
+      conductor, getZone(conductor) || '—',
+      g('bidones_recogidos'), g('bidones_entregados'),
+      p('DESENGRASANTES'), p('FREGASUELOS'), p('LAVAVAJILLAS'), p('JABÓN DE MANOS'),
+      p('HIGIENIZANTES'), p('WC BAÑOS'), p('L. CRISTALES'), p('LEJÍAS'),
+      p('FILTROS'), p('BAYETAS'), p('DINERO'), p('OTROS')
+    ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+  });
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `albaranes_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>

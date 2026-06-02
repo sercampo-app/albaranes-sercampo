@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"\\\\\\\\NASSERCAMPO\\\\sercampo\\\\MARKETING\\\\Paula Sanz - Marketing\\\\sercampo-albaranes\")",
+      "Bash(npm --version)",
+      "Bash(cd \"\\\\\\\\NASSERCAMPO\\\\sercampo\\\\MARKETING\\\\Paula Sanz - Marketing\\\\sercampo-albaranes\")",
+      "Read(///NASSERCAMPO/sercampo/NASSERCAMPO/sercampo/MARKETING/Paula Sanz - Marketing/**)"
+    ]
+  }
+}
