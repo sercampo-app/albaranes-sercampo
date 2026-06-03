@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se recibió imagen' }, { status: 400 })
     }
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: 'OPENROUTER_API_KEY no configurada' }, { status: 500 })
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: 'OPENAI_API_KEY no configurada' }, { status: 500 })
     }
 
     const bytes = await file.arrayBuffer()
@@ -76,48 +76,33 @@ export async function POST(req: NextRequest) {
 
     const prompt = SYSTEM_PROMPT + contextExtra
 
-    const openRouterHeaders = {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://albaranes-sercampo.vercel.app',
-      'X-Title': 'Sercampo Albaranes',
-    }
-
-    const buildBody = (model: string) => JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
-          ]
-        }
-      ],
-      max_tokens: 2048,
-      temperature: 0.1
-    })
-
-    let response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: openRouterHeaders,
-      body: buildBody('google/gemma-4-31b-it:free'),
-    })
-
-    if (!response.ok) {
-      console.warn('OpenRouter modelo principal falló, usando fallback openrouter/free')
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: openRouterHeaders,
-        body: buildBody('openrouter/auto'),
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+            ]
+          }
+        ],
+        max_tokens: 2048,
+        temperature: 0.1
       })
-    }
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('OpenRouter API error:', response.status, errorText)
+      console.error('OpenAI API error:', response.status, errorText)
       return NextResponse.json(
-        { error: `Error de la API de OpenRouter: ${response.status}` },
+        { error: `Error de la API de OpenAI: ${response.status}` },
         { status: 500 }
       )
     }
