@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { ALL_CONDUCTORES, ZONA_POR_CONDUCTOR } from '@/lib/types'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
 const SYSTEM_PROMPT = `Eres un experto en leer albaranes manuscritos de Sercampo, empresa de recogida de aceites vegetales usados.
 Extrae TODOS los campos del formulario. Si un campo está en blanco o es ilegible, devuelve cadena vacía "".
@@ -65,29 +62,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se recibió imagen' }, { status: 400 })
     }
 
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY no configurada' }, { status: 500 })
+    }
+
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
-    const mimeType = file.type as 'image/jpeg' | 'image/png' | 'image/webp'
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+    const mimeType = file.type
 
     const contextExtra = conductoresInfo
       ? `\nContexto adicional sobre estilos de letra de conductores:\n${conductoresInfo}`
       : ''
 
-    const result = await model.generateContent([
-      SYSTEM_PROMPT + contextExtra,
-      {
-        inlineData: {
-          data: base64,
-          mimeType,
+    const prompt = SYSTEM_PROMPT + contextExtra
+
+    const body = {
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: base64,
+              },
+            },
+          ],
         },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
       },
-    ])
+    }
 
-    const text = result.response.text().trim()
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    )
 
-    // Extraer JSON de la respuesta (puede venir entre ```json ... ```)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Gemini API error:', response.status, errorText)
+      return NextResponse.json(
+        { error: `Error de la API de Gemini: ${response.status}` },
+        { status: 500 }
+      )
+    }
+
+    const geminiData = await response.json()
+    const text: string = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+
+    if (!text) {
+      return NextResponse.json({ error: 'Respuesta vacía de la IA' }, { status: 500 })
+    }
+
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return NextResponse.json({ error: 'Respuesta inválida de la IA' }, { status: 500 })
@@ -95,7 +129,6 @@ export async function POST(req: NextRequest) {
 
     const parsed = JSON.parse(jsonMatch[0])
 
-    // Completar zona si falta
     if (parsed.conductor && !parsed.zona) {
       const conductorName = ALL_CONDUCTORES.find(
         (c) => c.toLowerCase() === parsed.conductor?.toLowerCase()
