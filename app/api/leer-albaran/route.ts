@@ -76,28 +76,42 @@ export async function POST(req: NextRequest) {
 
     const prompt = SYSTEM_PROMPT + contextExtra
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://albaranes-sercampo.vercel.app',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
-            ]
-          }
-        ],
-        max_tokens: 2048,
-        temperature: 0.1
-      })
+    const openRouterHeaders = {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://albaranes-sercampo.vercel.app',
+      'X-Title': 'Sercampo Albaranes',
+    }
+
+    const buildBody = (model: string) => JSON.stringify({
+      model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+          ]
+        }
+      ],
+      max_tokens: 2048,
+      temperature: 0.1
     })
+
+    let response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: openRouterHeaders,
+      body: buildBody('google/gemma-4-31b-it:free'),
+    })
+
+    if (!response.ok) {
+      console.warn('OpenRouter modelo principal falló, usando fallback openrouter/free')
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: openRouterHeaders,
+        body: buildBody('openrouter/auto'),
+      })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
