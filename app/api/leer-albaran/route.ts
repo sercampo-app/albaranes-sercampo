@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         'HTTP-Referer': 'https://albaranes-sercampo.vercel.app',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
         messages: [
           {
             role: 'user',
