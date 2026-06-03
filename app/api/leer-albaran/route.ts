@@ -62,9 +62,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se recibió imagen' }, { status: 400 })
     }
 
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.OPENROUTER_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY no configurada' }, { status: 500 })
+      return NextResponse.json({ error: 'OPENROUTER_API_KEY no configurada' }, { status: 500 })
     }
 
     const bytes = await file.arrayBuffer()
@@ -78,45 +78,43 @@ export async function POST(req: NextRequest) {
     const prompt = SYSTEM_PROMPT + contextExtra
 
     const body = {
-      contents: [
+      model: 'google/gemini-2.0-flash-exp:free',
+      messages: [
         {
-          parts: [
-            { text: prompt },
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64,
-              },
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${base64}` },
             },
           ],
         },
       ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
+      temperature: 0.1,
+      max_tokens: 2048,
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    )
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Gemini API error:', response.status, errorText)
+      console.error('OpenRouter API error:', response.status, errorText)
       return NextResponse.json(
-        { error: `Error de la API de Gemini: ${response.status}` },
+        { error: `Error de la API de OpenRouter: ${response.status}` },
         { status: 500 }
       )
     }
 
-    const geminiData = await response.json()
-    const text: string = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+    const openRouterData = await response.json()
+    const text: string = openRouterData?.choices?.[0]?.message?.content?.trim() ?? ''
 
     if (!text) {
       return NextResponse.json({ error: 'Respuesta vacía de la IA' }, { status: 500 })
