@@ -62,8 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se recibió imagen' }, { status: 400 })
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY
-    if (!apiKey) {
+    if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json({ error: 'OPENROUTER_API_KEY no configurada' }, { status: 500 })
     }
 
@@ -77,31 +76,27 @@ export async function POST(req: NextRequest) {
 
     const prompt = SYSTEM_PROMPT + contextExtra
 
-    const body = {
-      model: 'google/gemini-2.0-flash-exp:free',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64}` },
-            },
-          ],
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 2048,
-    }
-
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://albaranes-sercampo.vercel.app',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
+            ]
+          }
+        ],
+        max_tokens: 2048,
+        temperature: 0.1
+      })
     })
 
     if (!response.ok) {
@@ -113,8 +108,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const openRouterData = await response.json()
-    const text: string = openRouterData?.choices?.[0]?.message?.content?.trim() ?? ''
+    const data = await response.json()
+    const text: string = data?.choices?.[0]?.message?.content?.trim() ?? ''
 
     if (!text) {
       return NextResponse.json({ error: 'Respuesta vacía de la IA' }, { status: 500 })
